@@ -3,7 +3,7 @@ var express = require('express');
 var router = express.Router();
 var tweetBank = require('../tweetBank');
 var joinTweet = "SELECT content, name, pictureUrl, tweets.id AS tweetID, users.id AS userID FROM tweets INNER JOIN users ON tweets.userid = users.id";
-var insertTweet = "INSERT INTO tweets (userID, content) VALUES ($1, $2)";
+var PGinsert = "INSERT INTO tweets (userID, content) VALUES ($1, $2)";
 
 module.exports = function makeRouterWithSockets (io, client) {
 
@@ -19,6 +19,18 @@ module.exports = function makeRouterWithSockets (io, client) {
     //   tweets: allTheTweets,
     //   showForm: true
     // });
+  }
+
+  function selectIDfromName(name, func) {
+    client.query('SELECT ID FROM USERS WHERE NAME = $1', name, func);
+  }
+
+  function insertUser(name, func) {
+    client.query("INSERT INTO users (name) VALUES ($1)", name, func);
+  }
+
+  function insertTweet(userid, tweet, func) {
+    client.query(PGInsert, [userid, tweet], func);
   }
 
   
@@ -56,34 +68,35 @@ module.exports = function makeRouterWithSockets (io, client) {
 
   // create a new tweet
   router.post('/tweets', function(req, res, next){
-    //var newTweet = tweetBank.add(req.body.name, req.body.text);
-    client.query('SELECT id from users where name = $1', [req.body.name], function(err, result) {
+    
+    var name = req.body.name;
+    var text = req.body.text;
 
-      if (!result.rows[0]) {
-        client.query("INSERT INTO users (name) VALUES ($1)", [req.body.name], function(err, data) {
+    selectIDfromName(name, function(err, result) {
+      if (!result.rows[0]) insertUser(name, function(err, data) {
+        selectIDfromName(name, function(err, result) {
           var userID = result.rows[0].id;
-          var newTweet = [userID, req.body.text];
-          client.query(insertTweet, newTweet, function(err, data) {
+          insertTweet(userID, text, function(err, data) {
             if (err) throw err;
-            var tweet = {'name': req.body.name, 'text': req.body.text, 'id': userID};
+            var tweet = {'name': name, 'text': text, 'id': userID};
             io.sockets.emit('new_tweet', tweet);
             res.redirect('/');
           });
         });
-      }
+      });
       else {
         var userID = result.rows[0].id;
-        var newTweet = [userID, req.body.text];
-        client.query(insertTweet, newTweet, function(err, data) {
+        insertTweet(userID, text, function(err, data) {
           if (err) throw err;
-          var tweet = {'name': req.body.name, 'text': req.body.text, 'id': userID};
+          var tweet = {'name': name, 'text': text, 'id': userID};
           io.sockets.emit('new_tweet', tweet);
           res.redirect('/');
         });
-      }
+      };
     });
   });
 
-
   return router;
 }
+
+

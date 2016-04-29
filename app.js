@@ -9,6 +9,11 @@ var path = require('path');
 var mime = require('mime');
 var bodyParser = require('body-parser');
 var socketio = require('socket.io');
+var pg = require('pg');
+var conString = 'postgres://localhost:5432/twitterdb';
+var client = new pg.Client(conString);
+
+client.connect();
 
 // templating boilerplate setup
 app.set('views', path.join(__dirname, '/views')); // where to find the views
@@ -31,7 +36,7 @@ var server = app.listen(1337, function(){
 var io = socketio.listen(server);
 
 // modular routing that uses io inside it
-app.use('/', makesRouter(io));
+app.use('/', makesRouter(io, client));
 
 // the typical way to use express static middleware.
 app.use(express.static(path.join(__dirname, '/public')));
