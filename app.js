@@ -9,6 +9,7 @@ var path = require('path');
 var mime = require('mime');
 var bodyParser = require('body-parser');
 var socketio = require('socket.io');
+
 var pg = require('pg');
 var conString = 'postgres://localhost:5432/twitterdb';
 var client = new pg.Client(conString);
